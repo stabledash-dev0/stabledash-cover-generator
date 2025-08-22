@@ -96,12 +96,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .resize(logoWidth, logoHeight, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
 
     // Create logo with transparent background and make visible parts white
-    const logoWithTransparency = await resizedLogo
-      .removeAlpha()
-      .greyscale() // Convert to greyscale first
-      .linear(0, 1) // Ensure full contrast
-      .tint({ r: 255, g: 255, b: 255 }) // Make logo white
-      .png()
+    // 1) Extract the original alpha as a mask
+    const alpha = await resizedLogo.clone().extractChannel('alpha').toBuffer()
+
+    // 2) Create a solid white RGB image
+    const whiteRGB = await sharp({
+      create: {
+        width: logoWidth,
+        height: logoHeight,
+        channels: 3,
+        background: { r: 255, g: 255, b: 255 },
+      },
+    }).png().toBuffer()
+
+    // 3) Combine: white RGB + original alpha → white logo with same transparency
+    const logoWithTransparency = await sharp(whiteRGB)
+      .joinChannel(alpha) // makes it RGBA with your original alpha
+      .png()              // keep as PNG to preserve transparency
       .toBuffer()
 
     // Prepare composite layers
