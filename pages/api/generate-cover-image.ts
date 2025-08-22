@@ -1,6 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import sharp from 'sharp'
 
+// Configuration constants
+const LOGO_HEIGHT = 60 // Fixed logo height in pixels
+const LOGO_PADDING = 40 // Fixed padding from edges in pixels
+const SHOW_OVERLAY = false // Flag to enable/disable texture overlay
+
 interface CoverImageRequest {
   background: string
   logo: string
@@ -108,16 +113,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Calculate padding - use fixed pixels for consistent positioning
-    const padding = 40 // Fixed 40px padding from edges
+    const padding = LOGO_PADDING // Fixed padding from edges
 
-    // Resize logo to fixed 60px height while maintaining aspect ratio
+    // Resize logo to fixed height while maintaining aspect ratio
     const resizedLogo = sharp(Buffer.from(logoBuffer))
-      .resize(null, 60, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .resize(null, LOGO_HEIGHT, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
 
     // Get the actual dimensions of the resized logo
     const logoMetadata = await resizedLogo.metadata()
-    const actualLogoHeight = logoMetadata.height || 60
-    const actualLogoWidth = logoMetadata.width || 60
+    const actualLogoHeight = logoMetadata.height || LOGO_HEIGHT
+    const actualLogoWidth = logoMetadata.width || LOGO_HEIGHT
 
     // Create logo with transparent background and make visible parts white
     // Simple approach: keep alpha channel and tint to white
@@ -131,7 +136,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const compositeLayersInput: any[] = []
 
     // 1. Add texture overlay first (on top of background)
-    if (useOverlay) {
+    if (useOverlay && SHOW_OVERLAY) {
       try {
         // Use hardcoded overlay URL for reliability
         const overlayUrl = 'https://ejfcjiyxyifxjrmkchjx.supabase.co/storage/v1/object/public/backgrounds/texture.png'
@@ -191,8 +196,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 3. Add logo (always on top) - aligned to bottom
     compositeLayersInput.push({
       input: logoWithTransparency,
-      top: bgHeight - 60 - padding, // Align to bottom of rectangle
-      left: 40
+      top: bgHeight - LOGO_HEIGHT - padding, // Align to bottom of rectangle
+      left: LOGO_PADDING
     })
 
     // Composite all layers onto background
