@@ -48,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Set defaults for optional fields
     const logoWidthPct = body.logo_width_pct ?? 0.30
-    const padPct = body.pad_pct ?? 0.05
+    const padPct = 0.1//body.pad_pct ?? 0.05
     const quality = body.quality ?? 90
     const useOverlay = body.overlay !== false
     const gradientIntensity = body.gradient_intensity ?? 0.8
@@ -91,28 +91,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Calculate padding
     const padding = Math.round(bgWidth * padPct)
 
-    // Resize logo
+    // Resize logo to fit width while maintaining aspect ratio
     const resizedLogo = sharp(Buffer.from(logoBuffer))
-      .resize(logoWidth, logoHeight, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .resize(logoWidth, null, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+
+    // Get the actual dimensions of the resized logo
+    const logoMetadata = await resizedLogo.metadata()
+    const actualLogoHeight = logoMetadata.height || logoHeight
 
     // Create logo with transparent background and make visible parts white
-    // 1) Extract the original alpha as a mask
-    const alpha = await resizedLogo.clone().extractChannel('alpha').toBuffer()
-
-    // 2) Create a solid white RGB image
-    const whiteRGB = await sharp({
-      create: {
-        width: logoWidth,
-        height: logoHeight,
-        channels: 3,
-        background: { r: 255, g: 255, b: 255 },
-      },
-    }).png().toBuffer()
-
-    // 3) Combine: white RGB + original alpha → white logo with same transparency
-    const logoWithTransparency = await sharp(whiteRGB)
-      .joinChannel(alpha) // makes it RGBA with your original alpha
-      .png()              // keep as PNG to preserve transparency
+    // Simple approach: convert to white while preserving quality
+    const logoWithTransparency = await resizedLogo
+      .greyscale() // Convert to greyscale first
+      .tint({ r: 255, g: 255, b: 255 }) // Make logo white
+      .png()
       .toBuffer()
 
     // Prepare composite layers
@@ -176,11 +168,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       left: 0
     })
 
-    // 3. Add logo (always on top)
+    // 3. Add logo (always on top) - aligned to bottom
     compositeLayersInput.push({
       input: logoWithTransparency,
-      top: bgHeight - logoHeight - padding,
-      left: padding
+      top: bgHeight - actualLogoHeight - padding, // Align to bottom of rectangle
+      left: padding/2
     })
 
     // Composite all layers onto background
