@@ -6,7 +6,8 @@ An API-only Next.js application that generates cover images using Sharp, with su
 
 - **Cover Image Generation**: Composite logos onto background images
 - **Texture Overlay**: Add texture overlays between background and logo
-- **Configurable Parameters**: Logo size, padding, and image quality
+- **Gradient Overlay**: Black to transparent gradient from bottom to top
+- **Configurable Parameters**: Logo size, padding, image quality, and gradient intensity
 - **Bearer Token Authentication**: Secure API access
 - **Optimized for Render**: Docker configuration with Sharp dependencies
 
@@ -30,7 +31,8 @@ Content-Type: application/json
   "logo_width_pct": 0.30,
   "pad_pct": 0.05,
   "quality": 90,
-  "overlay": true
+  "overlay": true,
+  "gradient_intensity": 0.8
 }
 ```
 
@@ -41,6 +43,7 @@ Content-Type: application/json
 - `pad_pct` (optional): Padding as percentage of background width (default: 0.05)
 - `quality` (optional): JPEG quality 1-100 (default: 90)
 - `overlay` (optional): Enable texture overlay (default: true)
+- `gradient_intensity` (optional): Gradient overlay intensity 0.0-1.0 (default: 0.8)
 
 **Response:** JPEG image with appropriate headers
 
@@ -67,7 +70,8 @@ curl -X POST \
     "logo_width_pct": 0.30,
     "pad_pct": 0.05,
     "quality": 90,
-    "overlay": true
+    "overlay": true,
+    "gradient_intensity": 0.8
   }' \
   "https://your-render-url.onrender.com/api/generate-cover-image" \
   --output cover-image.jpg
