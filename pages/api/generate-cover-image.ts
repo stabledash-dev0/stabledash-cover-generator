@@ -118,35 +118,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Prepare composite layers
     const compositeLayersInput: any[] = []
 
-    // 1. Add gradient overlay first (on top of background)
-    const gradientHeight = Math.round(bgHeight * 0.4) // 40% of image height
-    
-    // Create a simple gradient using SVG
-    const gradientSvg = `
-      <svg width="${bgWidth}" height="${gradientHeight}" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="grad" x1="0%" y1="100%" x2="0%" y2="0%">
-            <stop offset="0%" style="stop-color:rgba(0,0,0,${gradientIntensity});stop-opacity:1" />
-            <stop offset="50%" style="stop-color:rgba(0,0,0,${gradientIntensity * 0.5});stop-opacity:1" />
-            <stop offset="100%" style="stop-color:rgba(0,0,0,0);stop-opacity:0" />
-          </linearGradient>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#grad)"/>
-      </svg>
-    `
-
-    const gradientOverlay = await sharp(Buffer.from(gradientSvg))
-      .png()
-      .toBuffer()
-
-    // Add gradient overlay (positioned at bottom)
-    compositeLayersInput.push({
-      input: gradientOverlay,
-      top: bgHeight - gradientHeight,
-      left: 0
-    })
-
-    // 2. Add texture overlay on top of gradient
+    // 1. Add texture overlay first (on top of background)
     if (useOverlay) {
       try {
         // Use hardcoded overlay URL for reliability
@@ -175,6 +147,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.warn('Failed to load overlay, continuing without it:', error)
       }
     }
+
+    // 2. Add black gradient overlay (on top of overlay)
+    const gradientHeight = Math.round(bgHeight * 0.4) // 40% of image height
+    
+    // Create a simple gradient using SVG
+    const gradientSvg = `
+      <svg width="${bgWidth}" height="${gradientHeight}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="grad" x1="0%" y1="100%" x2="0%" y2="0%">
+            <stop offset="0%" style="stop-color:rgba(0,0,0,${gradientIntensity});stop-opacity:1" />
+            <stop offset="50%" style="stop-color:rgba(0,0,0,${gradientIntensity * 0.8});stop-opacity:1" />
+            <stop offset="100%" style="stop-color:rgba(0,0,0,0);stop-opacity:0" />
+          </linearGradient>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grad)"/>
+      </svg>
+    `
+
+    const gradientOverlay = await sharp(Buffer.from(gradientSvg))
+      .png()
+      .toBuffer()
+
+    // Add gradient overlay (positioned at bottom)
+    compositeLayersInput.push({
+      input: gradientOverlay,
+      top: bgHeight - gradientHeight,
+      left: 0
+    })
 
     // 3. Add logo (always on top)
     compositeLayersInput.push({
