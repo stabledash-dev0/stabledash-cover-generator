@@ -9,6 +9,9 @@ interface CoverImageRequest {
   quality: number
   overlay?: string | boolean
   gradient_intensity?: number
+  size?: 'hero' | 'thumbnail' | 'og' | 'custom'
+  width?: number
+  height?: number
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -53,6 +56,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const useOverlay = body.overlay !== false
     const gradientIntensity = body.gradient_intensity ?? 0.8
 
+    // Handle size parameter
+    const size = body.size ?? 'custom'
+    const customWidth = body.width
+    const customHeight = body.height
+
+    // Define size presets
+    const sizePresets = {
+      hero: { width: 1120, height: 400 },
+      thumbnail: { width: 1280, height: 720 }, // 16:9 ratio
+      og: { width: 1200, height: 630 }
+    }
+
     // Fetch background image
     const backgroundResponse = await fetch(body.background)
     if (!backgroundResponse.ok) {
@@ -72,7 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const logoBuffer = await logoResponse.arrayBuffer()
 
     // Get background dimensions
-    const backgroundImage = sharp(Buffer.from(backgroundBuffer))
+    let backgroundImage = sharp(Buffer.from(backgroundBuffer))
     const backgroundMetadata = await backgroundImage.metadata()
 
     if (!backgroundMetadata.width || !backgroundMetadata.height) {
@@ -81,8 +96,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
     }
 
-    const bgWidth = backgroundMetadata.width
-    const bgHeight = backgroundMetadata.height
+    let bgWidth = backgroundMetadata.width
+    let bgHeight = backgroundMetadata.height
+
+    // Resize background if size is specified
+    if (size !== 'custom' && sizePresets[size]) {
+      const preset = sizePresets[size]
+      bgWidth = preset.width
+      bgHeight = preset.height
+      backgroundImage = backgroundImage.resize(bgWidth, bgHeight, { fit: 'cover' })
+    } else if (size === 'custom' && customWidth && customHeight) {
+      bgWidth = customWidth
+      bgHeight = customHeight
+      backgroundImage = backgroundImage.resize(bgWidth, bgHeight, { fit: 'cover' })
+    }
 
     // Calculate logo dimensions
     const logoWidth = Math.round(bgWidth * logoWidthPct)
