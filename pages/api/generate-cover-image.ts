@@ -124,16 +124,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const actualLogoHeight = logoMetadata.height || LOGO_HEIGHT
     const actualLogoWidth = logoMetadata.width || LOGO_HEIGHT
 
-    // Create logo with transparent background and make visible parts white
-    // Use modulate() for better color processing
+    // Create logo with transparent background and force pure white
+    // Use the proven method from old code: grayscale + linear(0, 255)
     const logoWithTransparency = await resizedLogo
       .ensureAlpha() // Ensure we work with RGBA (so transparency is preserved)
-      .modulate({
-        brightness: 1,  // keep original brightness
-        saturation: 0,  // remove color
-        hue: 0          // reset hue
-      })
-      .tint({ r: 255, g: 255, b: 255 }) // make it pure white
+      .grayscale()   // Convert to grayscale first
+      .modulate({ brightness: 1, saturation: 0 }) // Remove color
+      .linear(0, 255) // Force all non-transparent pixels to white
       .png()
       .toBuffer()
 
