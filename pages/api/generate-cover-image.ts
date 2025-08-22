@@ -81,9 +81,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const resizedLogo = sharp(Buffer.from(logoBuffer))
       .resize(logoWidth, logoHeight, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
 
-    // Create logo with transparent background and make it white
+    // Create logo with transparent background and make visible parts white
     const logoWithTransparency = await resizedLogo
       .removeAlpha()
+      .greyscale() // Convert to greyscale first
+      .linear(0, 1) // Ensure full contrast
       .tint({ r: 255, g: 255, b: 255 }) // Make logo white
       .png()
       .toBuffer()
