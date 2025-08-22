@@ -4,7 +4,6 @@ import sharp from 'sharp'
 interface CoverImageRequest {
   background: string
   logo: string
-  logo_width_pct: number
   quality: number
   overlay?: string | boolean
   gradient_intensity?: number
@@ -49,7 +48,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Set defaults for optional fields
-    const logoWidthPct = body.logo_width_pct ?? 0.30
     const quality = body.quality ?? 90
     const useOverlay = body.overlay !== false
     const gradientIntensity = body.gradient_intensity ?? 0.8
@@ -109,20 +107,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       backgroundImage = backgroundImage.resize(bgWidth, bgHeight, { fit: 'cover' })
     }
 
-    // Calculate logo dimensions
-    const logoWidth = Math.round(bgWidth * logoWidthPct)
-    const logoHeight = Math.round((logoWidth * (backgroundMetadata.height || 1)) / (backgroundMetadata.width || 1))
-
     // Calculate padding - use fixed pixels for consistent positioning
     const padding = 40 // Fixed 40px padding from edges
 
-    // Resize logo to fit width while maintaining aspect ratio
+    // Resize logo to fixed 60px height while maintaining aspect ratio
     const resizedLogo = sharp(Buffer.from(logoBuffer))
-      .resize(logoWidth, null, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .resize(null, 60, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
 
     // Get the actual dimensions of the resized logo
     const logoMetadata = await resizedLogo.metadata()
-    const actualLogoHeight = logoMetadata.height || logoHeight
+    const actualLogoHeight = logoMetadata.height || 60
+    const actualLogoWidth = logoMetadata.width || 60
 
     // Create logo with transparent background and make visible parts white
     // Simple approach: convert to white while preserving quality
@@ -196,7 +191,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 3. Add logo (always on top) - aligned to bottom
     compositeLayersInput.push({
       input: logoWithTransparency,
-      top: bgHeight - actualLogoHeight - padding, // Align to bottom of rectangle
+      top: bgHeight - 60 - padding, // Align to bottom of rectangle
       left: padding/2
     })
 
