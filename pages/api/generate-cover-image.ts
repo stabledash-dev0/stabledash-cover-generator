@@ -192,7 +192,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     compositeLayersInput.push({
       input: logoWithTransparency,
       top: bgHeight - 60 - padding, // Align to bottom of rectangle
-      left: padding/2
+      left: 40
     })
 
     // Composite all layers onto background
