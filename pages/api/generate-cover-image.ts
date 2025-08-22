@@ -5,7 +5,6 @@ interface CoverImageRequest {
   background: string
   logo: string
   logo_width_pct: number
-  pad_pct: number
   quality: number
   overlay?: string | boolean
   gradient_intensity?: number
@@ -51,7 +50,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Set defaults for optional fields
     const logoWidthPct = body.logo_width_pct ?? 0.30
-    const padPct = 0.1//body.pad_pct ?? 0.05
     const quality = body.quality ?? 90
     const useOverlay = body.overlay !== false
     const gradientIntensity = body.gradient_intensity ?? 0.8
@@ -115,8 +113,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const logoWidth = Math.round(bgWidth * logoWidthPct)
     const logoHeight = Math.round((logoWidth * (backgroundMetadata.height || 1)) / (backgroundMetadata.width || 1))
 
-    // Calculate padding
-    const padding = Math.round(bgWidth * padPct)
+    // Calculate padding - use fixed pixels for consistent positioning
+    const padding = 40 // Fixed 40px padding from edges
 
     // Resize logo to fit width while maintaining aspect ratio
     const resizedLogo = sharp(Buffer.from(logoBuffer))
