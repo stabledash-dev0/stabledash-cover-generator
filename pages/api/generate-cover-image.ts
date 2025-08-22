@@ -54,8 +54,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const useOverlay = body.overlay !== false
     const gradientIntensity = body.gradient_intensity ?? 0.8
 
-    // Handle size parameter
-    const size = body.size ?? 'custom'
+    // Handle size parameter - default to 'og' for social media sharing
+    const size = body.size ?? 'og'
     const customWidth = body.width
     const customHeight = body.height
 
