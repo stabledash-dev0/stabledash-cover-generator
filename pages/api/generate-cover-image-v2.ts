@@ -172,10 +172,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       console.log('Using HTML2PNG approach for perfect centering...')
       
-      // Launch Puppeteer
+      // Launch Puppeteer with production-friendly settings
       const browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
+          '--disable-gpu'
+        ]
       })
       
       const page = await browser.newPage()
@@ -198,9 +207,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       await browser.close()
       
-      // Process the screenshot with Sharp
+      // Process the screenshot with Sharp - ensure it fits within background
+      const maxLogoWidth = Math.round(bgWidth * 0.9) // 90% of background width
       logoWithTransparency = await sharp(logoBuffer)
-        .resize(null, LOGO_HEIGHT, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .resize(maxLogoWidth, LOGO_HEIGHT, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
         .png()
         .toBuffer()
         
@@ -209,10 +219,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (error) {
       console.warn('HTML2PNG failed, falling back to Sharp method:', error)
       
-      // Fallback to simple Sharp method
+      // Fallback to simple Sharp method - ensure it fits within background
+      const maxLogoWidth = Math.round(bgWidth * 0.9) // 90% of background width
       const resizedLogo = sharp(Buffer.from(logoBuffer))
         .trim()
-        .resize(null, LOGO_HEIGHT, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .resize(maxLogoWidth, LOGO_HEIGHT, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
 
       logoWithTransparency = await resizedLogo
         .ensureAlpha()
