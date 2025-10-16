@@ -3,7 +3,7 @@ import sharp from 'sharp'
 import puppeteer from 'puppeteer'
 
 // Configuration constants
-const LOGO_HEIGHT = 200 // Balanced logo height for good visibility
+const LOGO_HEIGHT = 400 // Balanced logo height for good visibility
 const LOGO_PADDING = 40 // Fixed padding from edges in pixels
 const SHOW_OVERLAY = false // Flag to enable/disable texture overlay
 
@@ -73,6 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Fetch background image
+    console.log('Background URL:', body.background)
     const backgroundResponse = await fetch(body.background)
     if (!backgroundResponse.ok) {
       return res.status(400).json({
@@ -82,6 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const backgroundBuffer = await backgroundResponse.arrayBuffer()
 
     // Fetch logo image
+    console.log('Logo URL:', body.logo)
     const logoResponse = await fetch(body.logo)
     if (!logoResponse.ok) {
       return res.status(400).json({
@@ -147,12 +149,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 height: 100%;
             }
             .logo {
-                max-height: ${LOGO_HEIGHT}px;
-                max-width: 100%;
+                height: ${LOGO_HEIGHT}px;
+                width: auto;
+                max-width: 90%;
                 object-fit: contain;
-                background: white;
-                padding: 20px;
-                border-radius: 8px;
+                filter: brightness(0) invert(1);
             }
         </style>
     </head>
@@ -184,7 +185,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await page.setContent(htmlTemplate, { waitUntil: 'networkidle0' })
       
       // Wait for the image to load
-      await page.waitForFunction(() => document.readyState === 'complete')
+      await new Promise(resolve => setTimeout(resolve, 1000))
       
       // Take screenshot of the entire page
       const logoBuffer = await page.screenshot({
