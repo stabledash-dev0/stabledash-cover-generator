@@ -184,7 +184,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await page.setContent(htmlTemplate, { waitUntil: 'networkidle0' })
       
       // Wait for the image to load
-      await page.waitForTimeout(1000)
+      await new Promise(resolve => setTimeout(resolve, 1000))
       
       // Take screenshot of the entire page
       const logoBuffer = await page.screenshot({
