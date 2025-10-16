@@ -1,8 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import sharp from 'sharp'
+import puppeteer from 'puppeteer'
 
 // Configuration constants
-const LOGO_HEIGHT = 60 // Fixed logo height in pixels
+const LOGO_HEIGHT = 200 // Balanced logo height for good visibility
 const LOGO_PADDING = 40 // Fixed padding from edges in pixels
 const SHOW_OVERLAY = false // Flag to enable/disable texture overlay
 
@@ -15,6 +16,7 @@ interface CoverImageRequest {
   size?: 'hero' | 'thumbnail' | 'og' | 'custom'
   width?: number
   height?: number
+  brandcolor?: string // Hex color without # (e.g., "FF5733")
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -115,20 +117,109 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Calculate padding - use fixed pixels for consistent positioning
     const padding = LOGO_PADDING // Fixed padding from edges
 
-    // Resize logo to fixed height while maintaining aspect ratio
-    const resizedLogo = sharp(Buffer.from(logoBuffer))
-      .resize(null, LOGO_HEIGHT, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
 
-    // Get the actual dimensions of the resized logo
-    const logoMetadata = await resizedLogo.metadata()
+    // Use HTML2PNG approach for perfect centering
+    const logoBase64 = Buffer.from(logoBuffer).toString('base64')
+    const logoExtension = body.logo.split('.').pop()?.toLowerCase() || 'png'
+    const logoMimeType = logoExtension === 'svg' ? 'image/svg+xml' : `image/${logoExtension}`
+    
+    const htmlTemplate = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                width: ${bgWidth}px;
+                height: ${bgHeight}px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: transparent;
+            }
+            .logo-container {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                height: 100%;
+            }
+            .logo {
+                max-height: ${LOGO_HEIGHT}px;
+                max-width: 100%;
+                object-fit: contain;
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="logo-container">
+            <img src="data:${logoMimeType};base64,${logoBase64}" class="logo" alt="Logo" />
+        </div>
+    </body>
+    </html>
+    `
+
+    let logoWithTransparency: Buffer
+    
+    try {
+      console.log('Using HTML2PNG approach for perfect centering...')
+      
+      // Launch Puppeteer
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      })
+      
+      const page = await browser.newPage()
+      
+      // Set viewport to match our image dimensions
+      await page.setViewport({ width: bgWidth, height: bgHeight })
+      
+      // Set the HTML content
+      await page.setContent(htmlTemplate, { waitUntil: 'networkidle0' })
+      
+      // Wait for the image to load
+      await page.waitForTimeout(1000)
+      
+      // Take screenshot of the entire page
+      const logoBuffer = await page.screenshot({
+        type: 'png',
+        omitBackground: true,
+        fullPage: false
+      })
+      
+      await browser.close()
+      
+      // Process the screenshot with Sharp
+      logoWithTransparency = await sharp(logoBuffer)
+        .resize(null, LOGO_HEIGHT, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .png()
+        .toBuffer()
+        
+      console.log('HTML2PNG logo created successfully')
+        
+    } catch (error) {
+      console.warn('HTML2PNG failed, falling back to Sharp method:', error)
+      
+      // Fallback to simple Sharp method
+      const resizedLogo = sharp(Buffer.from(logoBuffer))
+        .trim()
+        .resize(null, LOGO_HEIGHT, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+
+      logoWithTransparency = await resizedLogo
+        .ensureAlpha()
+        .png()
+        .toBuffer()
+    }
+
+    // Get dimensions for positioning
+    const logoMetadata = await sharp(logoWithTransparency).metadata()
     const actualLogoHeight = logoMetadata.height || LOGO_HEIGHT
     const actualLogoWidth = logoMetadata.width || LOGO_HEIGHT
-
-    // Create logo with transparent background - temporarily show original for debugging
-    const logoWithTransparency = await resizedLogo
-      .ensureAlpha() // Ensure we work with RGBA (so transparency is preserved)
-      .png()
-      .toBuffer()
 
     // Prepare composite layers
     const compositeLayersInput: any[] = []
@@ -191,11 +282,72 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       left: 0
     })
 
-    // 3. Add logo (always on top) - aligned to bottom
+    // 3. Add brand color gradient overlay (if provided)
+    if (body.brandcolor) {
+      try {
+        // Validate hex color (remove # if present)
+        const hexColor = body.brandcolor.replace('#', '').toUpperCase()
+        if (/^[0-9A-F]{6}$/.test(hexColor)) {
+          // Convert hex to RGB
+          const r = parseInt(hexColor.substr(0, 2), 16)
+          const g = parseInt(hexColor.substr(2, 2), 16)
+          const b = parseInt(hexColor.substr(4, 2), 16)
+          
+          // Create gradient SVG from brand color to black
+          const brandGradientSvg = `
+            <svg width="${bgWidth}" height="${bgHeight}" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="brandGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" style="stop-color:rgb(${r},${g},${b});stop-opacity:0.8" />
+                  <stop offset="100%" style="stop-color:rgb(0,0,0);stop-opacity:0.8" />
+                </linearGradient>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#brandGrad)"/>
+            </svg>
+          `
+          
+          const brandGradient = await sharp(Buffer.from(brandGradientSvg))
+            .png()
+            .toBuffer()
+          
+          compositeLayersInput.push({
+            input: brandGradient,
+            top: 0,
+            left: 0
+          })
+          
+          console.log(`Brand color gradient added: #${hexColor}`)
+        } else {
+          console.warn('Invalid brand color format:', body.brandcolor)
+        }
+      } catch (error) {
+        console.warn('Failed to create brand color gradient:', error)
+      }
+    }
+
+    // 4. Add logo (always on top) - centered both horizontally and vertically
+    const logoTop = Math.round((bgHeight - actualLogoHeight) / 2) // Center vertically using actual height
+    const logoLeft = Math.round((bgWidth - actualLogoWidth) / 2) // Center horizontally using actual width
+    
+    console.log('=== LOGO POSITIONING DEBUG ===');
+    console.log('Background dimensions:', { bgWidth, bgHeight });
+    console.log('Logo dimensions:', { actualLogoWidth, actualLogoHeight });
+    console.log('Calculated position:', { logoTop, logoLeft });
+    console.log('Background center:', { centerX: bgWidth / 2, centerY: bgHeight / 2 });
+    console.log('Logo center will be at:', { 
+      logoCenterX: logoLeft + (actualLogoWidth / 2), 
+      logoCenterY: logoTop + (actualLogoHeight / 2) 
+    });
+    console.log('Logo size ratio:', { 
+      widthRatio: actualLogoWidth / bgWidth, 
+      heightRatio: actualLogoHeight / bgHeight 
+    });
+    console.log('================================');
+    
     compositeLayersInput.push({
       input: logoWithTransparency,
-      top: bgHeight - LOGO_HEIGHT - padding, // Align to bottom of rectangle
-      left: LOGO_PADDING
+      top: logoTop,
+      left: logoLeft
     })
 
     // Composite all layers onto background
