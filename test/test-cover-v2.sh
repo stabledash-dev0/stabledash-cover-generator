@@ -17,7 +17,8 @@ curl -X POST \
     "overlay": true,
     "gradient_intensity": 0.8,
     "size": "og",
-    "brandcolor": "2B61FF"
+    "brandcolor": "2B61FF",
+    "watermark": true
   }' \
   http://localhost:3000/api/generate-cover-image-v2 \
   --output ./test/generated-cover-v2.jpg
