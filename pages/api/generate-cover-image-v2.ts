@@ -223,12 +223,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       // Fallback to simple Sharp method - ensure it fits within background
       const maxLogoWidth = Math.round(bgWidth * 0.5) // 50% of background width
+      
+      // Convert logo to white using Sharp operations
       const resizedLogo = sharp(Buffer.from(logoBuffer))
         .trim()
         .resize(maxLogoWidth, LOGO_HEIGHT, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .greyscale() // Convert to grayscale first
+        .linear(0, 0) // Set all channels to 0 (black)
+        .linear(1, 255) // Then add 255 to make it white
+        .ensureAlpha()
 
       logoWithTransparency = await resizedLogo
-        .ensureAlpha()
         .png()
         .toBuffer()
     }
