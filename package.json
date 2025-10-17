@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start -p $PORT",
     "lint": "next lint",
-    "postinstall": "npx puppeteer browsers install chrome && echo 'Chrome installed successfully' || echo 'Chrome installation failed, will use system Chrome'"
+    "postinstall": "echo 'Skipping Chrome installation during build'"
   },
   "dependencies": {
     "next": "14.0.0",

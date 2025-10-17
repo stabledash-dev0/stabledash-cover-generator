@@ -174,21 +174,68 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       console.log('Using HTML2PNG approach for perfect centering...')
       
-      // Hardcode the Chrome path that we know is installed during build
-      const chromePath = '/opt/render/.cache/puppeteer/chrome/linux-141.0.7390.78/chrome-linux64/chrome'
-      console.log(`Using hardcoded Chrome path: ${chromePath}`)
+      // Try to install Chrome at runtime if not found
+      let executablePath: string | undefined
+      const fs = require('fs')
       
-      // Launch Puppeteer with hardcoded Chrome path
-      const browser = await puppeteer.launch({
+      // First, try to install Chrome at runtime
+      try {
+        console.log('Attempting to install Chrome at runtime...')
+        const { execSync } = require('child_process')
+        execSync('npx puppeteer browsers install chrome', { stdio: 'inherit' })
+        console.log('Chrome installation completed')
+      } catch (e) {
+        console.log('Runtime Chrome installation failed:', e instanceof Error ? e.message : String(e))
+      }
+      
+      // Try multiple Chrome paths for Render deployment
+      const chromePaths = [
+        '/opt/render/.cache/puppeteer/chrome/linux-141.0.7390.78/chrome-linux64/chrome',
+        '/opt/render/.cache/puppeteer/chrome/linux-141.0.7390.78/chrome-linux64/chrome',
+        '/usr/bin/google-chrome',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium',
+        '/opt/google/chrome/chrome'
+      ]
+      
+      for (const chromePath of chromePaths) {
+        try {
+          console.log(`Checking Chrome path: ${chromePath}`)
+          if (fs.existsSync(chromePath)) {
+            executablePath = chromePath
+            console.log(`Found Chrome at: ${chromePath}`)
+            break
+          } else {
+            console.log(`Chrome not found at: ${chromePath}`)
+          }
+        } catch (e) {
+          console.log(`Error checking path ${chromePath}:`, e instanceof Error ? e.message : String(e))
+        }
+      }
+      
+      if (!executablePath) {
+        console.log('No Chrome found, using Puppeteer default detection')
+      }
+      
+      // Launch Puppeteer with found Chrome path or default detection
+      const launchOptions: any = {
         headless: true,
-        executablePath: chromePath,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--disable-gpu'
         ]
-      })
+      }
+      
+      if (executablePath) {
+        launchOptions.executablePath = executablePath
+        console.log(`Using Chrome executable: ${executablePath}`)
+      } else {
+        console.log('Using Puppeteer default Chrome detection')
+      }
+      
+      const browser = await puppeteer.launch(launchOptions)
       
       const page = await browser.newPage()
       
