@@ -12,12 +12,12 @@ curl -X POST \
   -H "Authorization: Bearer stabledash_cover_gen_2025_secure_xyz789" \
   -d '{
     "background": "https://cdn.sanity.io/images/ukg9h63w/production/88debc8831cde9f90bde7c850cd33dcb99236cae-3840x2160.png?rect=79,0,3761,997&w=2000&fit=max&auto=format",
-    "logo": "https://cdn.sanity.io/images/ukg9h63w/production/2b9e5e9c619849b6eb24bd844c88a7de746b99dc-475x122.svg",
+    "logo": "https://cdn.sanity.io/images/ukg9h63w/production/8d39a58a59e6166c91ace05796f7a2ad40828c49-81x26.svg",
     "quality": 100,
     "overlay": true,
     "gradient_intensity": 0.1,
     "size": "og",
-    "brandcolor": "2B61FF",
+    "brandcolor": "F82FB6",
     "watermark": true
   }' \
   https://stabledash-cover-generator.onrender.com/api/generate-cover-image-v2 \
