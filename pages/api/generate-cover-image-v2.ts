@@ -224,7 +224,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--disable-gpu'
+          '--disable-gpu',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding',
+          '--disable-extensions',
+          '--disable-plugins',
+          '--disable-default-apps',
+          '--disable-sync',
+          '--disable-translate',
+          '--hide-scrollbars',
+          '--mute-audio',
+          '--no-first-run',
+          '--disable-background-networking',
+          '--disable-component-update',
+          '--disable-domain-reliability',
+          '--disable-features=TranslateUI',
+          '--disable-ipc-flooding-protection',
+          '--disable-hang-monitor',
+          '--disable-prompt-on-repost',
+          '--disable-client-side-phishing-detection',
+          '--disable-component-extensions-with-background-pages',
+          '--disable-background-downloads',
+          '--disable-add-to-shelf',
+          '--disable-breakpad',
+          '--disable-client-side-phishing-detection',
+          '--disable-datasaver-prompt',
+          '--disable-desktop-notifications',
+          '--disable-domain-reliability',
+          '--disable-features=TranslateUI,BlinkGenPropertyTrees',
+          '--disable-hang-monitor',
+          '--disable-ipc-flooding-protection',
+          '--disable-popup-blocking',
+          '--disable-prompt-on-repost',
+          '--disable-renderer-backgrounding',
+          '--disable-sync',
+          '--disable-web-resources',
+          '--enable-automation',
+          '--force-color-profile=srgb',
+          '--metrics-recording-only',
+          '--no-first-run',
+          '--safebrowsing-disable-auto-update',
+          '--enable-automation',
+          '--password-store=basic',
+          '--use-mock-keychain',
+          '--disable-blink-features=AutomationControlled'
         ]
       }
       
@@ -242,8 +288,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Set viewport to match our image dimensions
       await page.setViewport({ width: bgWidth, height: bgHeight })
       
-      // Set the HTML content
-      await page.setContent(htmlTemplate, { waitUntil: 'networkidle0' })
+      // Set longer timeout for navigation
+      page.setDefaultNavigationTimeout(60000) // 60 seconds
+      page.setDefaultTimeout(60000) // 60 seconds
+      
+      // Set the HTML content with more lenient wait conditions
+      await page.setContent(htmlTemplate, { 
+        waitUntil: 'domcontentloaded',
+        timeout: 60000
+      })
       
       // Wait for the image to load
       await new Promise(resolve => setTimeout(resolve, 1000))
