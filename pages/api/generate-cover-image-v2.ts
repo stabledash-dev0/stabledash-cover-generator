@@ -177,6 +177,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Debug environment variables
       console.log('PUPPETEER_EXECUTABLE_PATH:', process.env.PUPPETEER_EXECUTABLE_PATH)
       console.log('PUPPETEER_CACHE_DIR:', process.env.PUPPETEER_CACHE_DIR)
+      console.log('Current working directory:', process.cwd())
+      console.log('Node modules path:', require.resolve('puppeteer'))
       
       // Try to find Chrome in the cache directory first
       const fs = require('fs')
@@ -198,9 +200,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.log(`Searching for Chrome in cache directory: ${cacheDir}`)
         
         try {
+          console.log(`Checking if cache directory exists: ${cacheDir}`)
           if (fs.existsSync(cacheDir)) {
+            console.log(`Cache directory exists, checking for chrome subdirectory`)
             const chromeDir = path.join(cacheDir, 'chrome')
+            console.log(`Chrome directory path: ${chromeDir}`)
             if (fs.existsSync(chromeDir)) {
+              console.log(`Chrome directory exists, searching for executable`)
               // Look for any chrome executable in subdirectories
               const findChrome = (dir: string): string | null => {
                 try {
@@ -245,13 +251,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         for (const chromePath of chromePaths) {
           try {
+            console.log(`Checking Chrome path: ${chromePath}`)
             if (fs.existsSync(chromePath)) {
               executablePath = chromePath
               console.log(`Found Chrome at: ${chromePath}`)
               break
+            } else {
+              console.log(`Chrome not found at: ${chromePath}`)
             }
           } catch (e) {
-            // Continue to next path
+            console.log(`Error checking path ${chromePath}:`, e.message)
           }
         }
       }
