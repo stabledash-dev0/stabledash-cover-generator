@@ -174,9 +174,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       console.log('Using HTML2PNG approach for perfect centering...')
       
+      // Try multiple Chrome paths for Render deployment
+      const chromePaths = [
+        process.env.PUPPETEER_EXECUTABLE_PATH,
+        '/opt/render/.cache/puppeteer/chrome/linux-141.0.7390.78/chrome-linux64/chrome',
+        '/usr/bin/google-chrome',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium',
+        '/opt/google/chrome/chrome'
+      ].filter(Boolean) // Remove undefined values
+      
+      let executablePath: string | undefined
+      for (const path of chromePaths) {
+        try {
+          const fs = require('fs')
+          if (fs.existsSync(path)) {
+            executablePath = path
+            console.log(`Found Chrome at: ${path}`)
+            break
+          }
+        } catch (e) {
+          // Continue to next path
+        }
+      }
+      
+      if (!executablePath) {
+        console.log('Chrome not found in any expected location, using default')
+      }
+      
       // Launch Puppeteer with Render-optimized settings
       const browser = await puppeteer.launch({
         headless: true,
+        executablePath,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
