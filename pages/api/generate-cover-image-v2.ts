@@ -202,11 +202,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         try {
           console.log(`Checking if cache directory exists: ${cacheDir}`)
           if (fs.existsSync(cacheDir)) {
-            console.log(`Cache directory exists, checking for chrome subdirectory`)
+            console.log(`Cache directory exists, listing contents:`)
+            try {
+              const cacheContents = fs.readdirSync(cacheDir)
+              console.log(`Cache directory contents:`, cacheContents)
+            } catch (e) {
+              console.log(`Error listing cache directory:`, e instanceof Error ? e.message : String(e))
+            }
+            
+            console.log(`Checking for chrome subdirectory`)
             const chromeDir = path.join(cacheDir, 'chrome')
             console.log(`Chrome directory path: ${chromeDir}`)
             if (fs.existsSync(chromeDir)) {
-              console.log(`Chrome directory exists, searching for executable`)
+              console.log(`Chrome directory exists, listing contents:`)
+              try {
+                const chromeContents = fs.readdirSync(chromeDir)
+                console.log(`Chrome directory contents:`, chromeContents)
+              } catch (e) {
+                console.log(`Error listing chrome directory:`, e instanceof Error ? e.message : String(e))
+              }
+              console.log(`Searching for executable`)
               // Look for any chrome executable in subdirectories
               const findChrome = (dir: string): string | null => {
                 try {
