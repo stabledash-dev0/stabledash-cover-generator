@@ -174,13 +174,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       console.log('Using HTML2PNG approach for perfect centering...')
       
-      // Simplified Chrome detection - let Puppeteer handle it
-      console.log('Using Puppeteer default Chrome detection')
-      let executablePath: string | undefined
+      // Hardcode the Chrome path that we know is installed during build
+      const chromePath = '/opt/render/.cache/puppeteer/chrome/linux-141.0.7390.78/chrome-linux64/chrome'
+      console.log(`Using hardcoded Chrome path: ${chromePath}`)
       
-      // Launch Puppeteer with simplified settings
+      // Launch Puppeteer with hardcoded Chrome path
       const browser = await puppeteer.launch({
         headless: true,
+        executablePath: chromePath,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
