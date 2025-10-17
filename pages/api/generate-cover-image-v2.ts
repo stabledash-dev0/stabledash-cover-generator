@@ -24,10 +24,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*')
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma')
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE, PATCH')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, X-Sanity-Source, X-Sanity-Project-ID, X-Sanity-Dataset, X-Sanity-Token, X-Sanity-API-Version')
     res.setHeader('Access-Control-Allow-Credentials', 'true')
     res.setHeader('Access-Control-Max-Age', '86400')
+    res.setHeader('Vary', 'Origin')
     res.status(200).end()
     return
   }
@@ -38,12 +39,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Set comprehensive CORS headers for POST requests
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE, PATCH')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, X-Sanity-Source, X-Sanity-Project-ID, X-Sanity-Dataset, X-Sanity-Token, X-Sanity-API-Version')
   res.setHeader('Access-Control-Allow-Credentials', 'true')
   res.setHeader('Access-Control-Max-Age', '86400')
+  res.setHeader('Vary', 'Origin')
 
   try {
+    // Debug: Log headers for CORS troubleshooting
+    console.log('Request headers:', JSON.stringify(req.headers, null, 2))
+    console.log('Request origin:', req.headers.origin)
+    console.log('Request method:', req.method)
+    
     // Check authorization
     const authHeader = req.headers.authorization
     if (authHeader !== 'Bearer stabledash_cover_gen_2025_secure_xyz789') {
