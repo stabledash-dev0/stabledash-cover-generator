@@ -20,7 +20,7 @@ curl -X POST \
     "brandcolor": "F82FB6",
     "watermark": true
   }' \
-  https://stabledash-cover-generator.onrender.com/api/generate-cover-image-v2 \
+  http://localhost:3000/api/generate-cover-image-v2 \
   --output ./test/generated-cover-v2.jpg
 
 echo "✅ V2 test completed! Check ./test/generated-cover-v2.jpg"
