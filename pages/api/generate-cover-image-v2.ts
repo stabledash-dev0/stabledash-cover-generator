@@ -235,7 +235,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           }
         } catch (e) {
-          console.log('Error searching cache directory:', e.message)
+          console.log('Error searching cache directory:', e instanceof Error ? e.message : String(e))
         }
       }
       
@@ -260,7 +260,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               console.log(`Chrome not found at: ${chromePath}`)
             }
           } catch (e) {
-            console.log(`Error checking path ${chromePath}:`, e.message)
+            console.log(`Error checking path ${chromePath}:`, e instanceof Error ? e.message : String(e))
           }
         }
       }
@@ -278,7 +278,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             console.log(`Using system Chrome: ${executablePath}`)
           }
         } catch (e) {
-          console.log('No system Chrome found either')
+          console.log('No system Chrome found either:', e instanceof Error ? e.message : String(e))
         }
       }
       
