@@ -174,32 +174,103 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       console.log('Using HTML2PNG approach for perfect centering...')
       
-      // Try multiple Chrome paths for Render deployment
-      const chromePaths = [
-        process.env.PUPPETEER_EXECUTABLE_PATH,
-        '/opt/render/.cache/puppeteer/chrome/linux-141.0.7390.78/chrome-linux64/chrome',
-        '/usr/bin/google-chrome',
-        '/usr/bin/chromium-browser',
-        '/usr/bin/chromium',
-        '/opt/google/chrome/chrome'
-      ].filter(Boolean) // Remove undefined values
+      // Debug environment variables
+      console.log('PUPPETEER_EXECUTABLE_PATH:', process.env.PUPPETEER_EXECUTABLE_PATH)
+      console.log('PUPPETEER_CACHE_DIR:', process.env.PUPPETEER_CACHE_DIR)
+      
+      // Try to find Chrome in the cache directory first
+      const fs = require('fs')
+      const path = require('path')
       
       let executablePath: string | undefined
-      for (const path of chromePaths) {
+      
+      // First, try the environment variable
+      if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+        if (fs.existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)) {
+          executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
+          console.log(`Found Chrome via env var: ${executablePath}`)
+        }
+      }
+      
+      // If not found, try to find Chrome in the cache directory
+      if (!executablePath) {
+        const cacheDir = process.env.PUPPETEER_CACHE_DIR || '/opt/render/.cache/puppeteer'
+        console.log(`Searching for Chrome in cache directory: ${cacheDir}`)
+        
         try {
-          const fs = require('fs')
-          if (fs.existsSync(path)) {
-            executablePath = path
-            console.log(`Found Chrome at: ${path}`)
-            break
+          if (fs.existsSync(cacheDir)) {
+            const chromeDir = path.join(cacheDir, 'chrome')
+            if (fs.existsSync(chromeDir)) {
+              // Look for any chrome executable in subdirectories
+              const findChrome = (dir: string): string | null => {
+                try {
+                  const items = fs.readdirSync(dir)
+                  for (const item of items) {
+                    const fullPath = path.join(dir, item)
+                    const stat = fs.statSync(fullPath)
+                    if (stat.isDirectory()) {
+                      const result = findChrome(fullPath)
+                      if (result) return result
+                    } else if (item === 'chrome' || item === 'google-chrome' || item === 'chromium') {
+                      return fullPath
+                    }
+                  }
+                } catch (e) {
+                  // Continue searching
+                }
+                return null
+              }
+              
+              const foundChrome = findChrome(chromeDir)
+              if (foundChrome) {
+                executablePath = foundChrome
+                console.log(`Found Chrome in cache: ${executablePath}`)
+              }
+            }
           }
         } catch (e) {
-          // Continue to next path
+          console.log('Error searching cache directory:', e.message)
+        }
+      }
+      
+      // Fallback to common paths
+      if (!executablePath) {
+        const chromePaths = [
+          '/opt/render/.cache/puppeteer/chrome/linux-141.0.7390.78/chrome-linux64/chrome',
+          '/usr/bin/google-chrome',
+          '/usr/bin/chromium-browser',
+          '/usr/bin/chromium',
+          '/opt/google/chrome/chrome'
+        ]
+        
+        for (const chromePath of chromePaths) {
+          try {
+            if (fs.existsSync(chromePath)) {
+              executablePath = chromePath
+              console.log(`Found Chrome at: ${chromePath}`)
+              break
+            }
+          } catch (e) {
+            // Continue to next path
+          }
         }
       }
       
       if (!executablePath) {
         console.log('Chrome not found in any expected location, using default')
+        console.log('Available environment variables:', Object.keys(process.env).filter(k => k.includes('PUPPETEER')))
+        
+        // Try to use system Chrome as last resort
+        try {
+          const { execSync } = require('child_process')
+          const systemChrome = execSync('which google-chrome || which chromium-browser || which chromium', { encoding: 'utf8' }).trim()
+          if (systemChrome) {
+            executablePath = systemChrome
+            console.log(`Using system Chrome: ${executablePath}`)
+          }
+        } catch (e) {
+          console.log('No system Chrome found either')
+        }
       }
       
       // Launch Puppeteer with Render-optimized settings
