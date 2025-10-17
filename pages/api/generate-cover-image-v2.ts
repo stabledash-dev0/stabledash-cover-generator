@@ -283,9 +283,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       
       // Launch Puppeteer with Render-optimized settings
-      const browser = await puppeteer.launch({
+      const launchOptions: any = {
         headless: true,
-        executablePath,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -298,7 +297,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           '--disable-web-security',
           '--disable-features=VizDisplayCompositor'
         ]
-      })
+      }
+      
+      // Only set executablePath if we found one
+      if (executablePath) {
+        launchOptions.executablePath = executablePath
+        console.log(`Using Chrome executable: ${executablePath}`)
+      } else {
+        console.log('Using Puppeteer default Chrome detection')
+      }
+      
+      const browser = await puppeteer.launch(launchOptions)
       
       const page = await browser.newPage()
       
