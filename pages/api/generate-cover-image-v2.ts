@@ -153,7 +153,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .logo {
                 height: ${LOGO_HEIGHT}px;
                 width: auto;
-                max-width: 50%;
+                max-width: 90%;
                 object-fit: contain;
                 filter: brightness(0) invert(1);
             }
@@ -208,8 +208,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await browser.close()
       
       // Process the screenshot with Sharp - ensure it fits within background
-      const maxLogoWidth = Math.round(bgWidth * 0.5) // 50% of background width to match CSS
-      console.log('HTML2PNG Sharp processing - maxLogoWidth:', maxLogoWidth, 'LOGO_HEIGHT:', LOGO_HEIGHT)
+      const maxLogoWidth = Math.round(bgWidth * 0.9) // 90% of background width
       logoWithTransparency = await sharp(logoBuffer)
         .resize(maxLogoWidth, LOGO_HEIGHT, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
         .png()
@@ -221,8 +220,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.warn('HTML2PNG failed, falling back to Sharp method:', error)
       
       // Fallback to simple Sharp method - ensure it fits within background
-      const maxLogoWidth = Math.round(bgWidth * 0.5) // 50% of background width to match CSS
-      console.log('Sharp fallback - maxLogoWidth:', maxLogoWidth, 'LOGO_HEIGHT:', LOGO_HEIGHT)
+      const maxLogoWidth = Math.round(bgWidth * 0.9) // 90% of background width
       const resizedLogo = sharp(Buffer.from(logoBuffer))
         .trim()
         .resize(maxLogoWidth, LOGO_HEIGHT, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
