@@ -174,155 +174,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       console.log('Using HTML2PNG approach for perfect centering...')
       
-      // Debug environment variables
-      console.log('PUPPETEER_EXECUTABLE_PATH:', process.env.PUPPETEER_EXECUTABLE_PATH)
-      console.log('PUPPETEER_CACHE_DIR:', process.env.PUPPETEER_CACHE_DIR)
-      console.log('Current working directory:', process.cwd())
-      console.log('Node modules path:', require.resolve('puppeteer'))
-      
-      // Try to find Chrome in the cache directory first
-      const fs = require('fs')
-      const path = require('path')
-      
+      // Simplified Chrome detection - let Puppeteer handle it
+      console.log('Using Puppeteer default Chrome detection')
       let executablePath: string | undefined
       
-      // First, try the environment variable
-      if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-        if (fs.existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)) {
-          executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
-          console.log(`Found Chrome via env var: ${executablePath}`)
-        }
-      }
-      
-      // If not found, try to find Chrome in the cache directory
-      if (!executablePath) {
-        const cacheDir = process.env.PUPPETEER_CACHE_DIR || '/opt/render/.cache/puppeteer'
-        console.log(`Searching for Chrome in cache directory: ${cacheDir}`)
-        
-        try {
-          console.log(`Checking if cache directory exists: ${cacheDir}`)
-          if (fs.existsSync(cacheDir)) {
-            console.log(`Cache directory exists, listing contents:`)
-            try {
-              const cacheContents = fs.readdirSync(cacheDir)
-              console.log(`Cache directory contents:`, cacheContents)
-            } catch (e) {
-              console.log(`Error listing cache directory:`, e instanceof Error ? e.message : String(e))
-            }
-            
-            console.log(`Checking for chrome subdirectory`)
-            const chromeDir = path.join(cacheDir, 'chrome')
-            console.log(`Chrome directory path: ${chromeDir}`)
-            if (fs.existsSync(chromeDir)) {
-              console.log(`Chrome directory exists, listing contents:`)
-              try {
-                const chromeContents = fs.readdirSync(chromeDir)
-                console.log(`Chrome directory contents:`, chromeContents)
-              } catch (e) {
-                console.log(`Error listing chrome directory:`, e instanceof Error ? e.message : String(e))
-              }
-              console.log(`Searching for executable`)
-              // Look for any chrome executable in subdirectories
-              const findChrome = (dir: string): string | null => {
-                try {
-                  const items = fs.readdirSync(dir)
-                  for (const item of items) {
-                    const fullPath = path.join(dir, item)
-                    const stat = fs.statSync(fullPath)
-                    if (stat.isDirectory()) {
-                      const result = findChrome(fullPath)
-                      if (result) return result
-                    } else if (item === 'chrome' || item === 'google-chrome' || item === 'chromium') {
-                      return fullPath
-                    }
-                  }
-                } catch (e) {
-                  // Continue searching
-                }
-                return null
-              }
-              
-              const foundChrome = findChrome(chromeDir)
-              if (foundChrome) {
-                executablePath = foundChrome
-                console.log(`Found Chrome in cache: ${executablePath}`)
-              }
-            }
-          }
-        } catch (e) {
-          console.log('Error searching cache directory:', e instanceof Error ? e.message : String(e))
-        }
-      }
-      
-      // Fallback to common paths
-      if (!executablePath) {
-        const chromePaths = [
-          '/opt/render/.cache/puppeteer/chrome/linux-141.0.7390.78/chrome-linux64/chrome',
-          '/usr/bin/google-chrome',
-          '/usr/bin/chromium-browser',
-          '/usr/bin/chromium',
-          '/opt/google/chrome/chrome'
-        ]
-        
-        for (const chromePath of chromePaths) {
-          try {
-            console.log(`Checking Chrome path: ${chromePath}`)
-            if (fs.existsSync(chromePath)) {
-              executablePath = chromePath
-              console.log(`Found Chrome at: ${chromePath}`)
-              break
-            } else {
-              console.log(`Chrome not found at: ${chromePath}`)
-            }
-          } catch (e) {
-            console.log(`Error checking path ${chromePath}:`, e instanceof Error ? e.message : String(e))
-          }
-        }
-      }
-      
-      if (!executablePath) {
-        console.log('Chrome not found in any expected location, using default')
-        console.log('Available environment variables:', Object.keys(process.env).filter(k => k.includes('PUPPETEER')))
-        
-        // Try to use system Chrome as last resort
-        try {
-          const { execSync } = require('child_process')
-          const systemChrome = execSync('which google-chrome || which chromium-browser || which chromium', { encoding: 'utf8' }).trim()
-          if (systemChrome) {
-            executablePath = systemChrome
-            console.log(`Using system Chrome: ${executablePath}`)
-          }
-        } catch (e) {
-          console.log('No system Chrome found either:', e instanceof Error ? e.message : String(e))
-        }
-      }
-      
-      // Launch Puppeteer with Render-optimized settings
-      const launchOptions: any = {
+      // Launch Puppeteer with simplified settings
+      const browser = await puppeteer.launch({
         headless: true,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--single-process',
-          '--disable-gpu',
-          '--disable-web-security',
-          '--disable-features=VizDisplayCompositor'
+          '--disable-gpu'
         ]
-      }
-      
-      // Only set executablePath if we found one
-      if (executablePath) {
-        launchOptions.executablePath = executablePath
-        console.log(`Using Chrome executable: ${executablePath}`)
-      } else {
-        console.log('Using Puppeteer default Chrome detection')
-      }
-      
-      const browser = await puppeteer.launch(launchOptions)
+      })
       
       const page = await browser.newPage()
       
