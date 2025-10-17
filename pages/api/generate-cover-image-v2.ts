@@ -153,7 +153,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .logo {
                 height: ${LOGO_HEIGHT}px;
                 width: auto;
-                max-width: 50%;
+                max-width: 80%;
                 object-fit: contain;
                 filter: brightness(0) invert(1);
             }
