@@ -9,3 +9,5 @@ services:
         value: production
       - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
         value: false
+      - key: PUPPETEER_EXECUTABLE_PATH
+        value: /opt/render/.cache/puppeteer/chrome/linux-141.0.7390.78/chrome-linux64/chrome

@@ -174,44 +174,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       console.log('Using HTML2PNG approach for perfect centering...')
       
-      // Try multiple Chrome paths for Render
-      let browser
-      const chromePaths = [
-        '/opt/render/.cache/puppeteer/chrome/linux-141.0.7390.78/chrome-linux64/chrome',
-        '/usr/bin/google-chrome',
-        '/usr/bin/chromium-browser',
-        '/usr/bin/chromium',
-        '/opt/google/chrome/chrome'
-      ]
-      
-      for (const chromePath of chromePaths) {
-        try {
-          console.log(`Trying Chrome at: ${chromePath}`)
-          browser = await puppeteer.launch({
-            headless: true,
-            executablePath: chromePath,
-            args: [
-              '--no-sandbox',
-              '--disable-setuid-sandbox',
-              '--disable-dev-shm-usage',
-              '--disable-accelerated-2d-canvas',
-              '--no-first-run',
-              '--no-zygote',
-              '--single-process',
-              '--disable-gpu'
-            ]
-          })
-          console.log(`Chrome found at: ${chromePath}`)
-          break
-        } catch (error) {
-          console.log(`Chrome not found at: ${chromePath}`)
-          continue
-        }
-      }
-      
-      if (!browser) {
-        throw new Error('No Chrome installation found')
-      }
+      // Launch Puppeteer with Render-optimized settings
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
+          '--disable-gpu',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor'
+        ]
+      })
       
       const page = await browser.newPage()
       
