@@ -293,6 +293,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Try to install Chrome at runtime if not found
     let executablePath: string | undefined
     const fs = require('fs')
+    const os = require('os')
+    const path = require('path')
     
     // First, try to install Chrome at runtime
     try {
@@ -304,12 +306,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('Runtime Chrome installation failed:', e instanceof Error ? e.message : String(e))
     }
     
-    // Try multiple Chrome paths for Render deployment
+    // Get home directory for Chrome cache path
+    const homeDir = os.homedir()
+    const chromeVersion = '141.0.7390.78'
+    
+    // Try multiple Chrome paths, including HOME directory
     const chromePaths = [
-      '/opt/render/.cache/puppeteer/chrome/linux-141.0.7390.78/chrome-linux64/chrome',
+      // Check HOME directory first (where Chrome gets installed)
+      path.join(homeDir, '.cache', 'puppeteer', 'chrome', `linux-${chromeVersion}`, 'chrome-linux64', 'chrome'),
+      // Render deployment paths
       '/opt/render/.cache/puppeteer/chrome/linux-141.0.7390.78/chrome-linux64/chrome',
       '/usr/bin/google-chrome',
-      '/usr/bin/chromium-browser',
       '/usr/bin/chromium',
       '/opt/google/chrome/chrome'
     ]
@@ -330,7 +337,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     
     if (!executablePath) {
-      console.log('No Chrome found, using Puppeteer default detection')
+      console.log('No Chrome found at specific paths, using Puppeteer default detection')
     }
     
     // Launch Puppeteer with found Chrome path or default detection
