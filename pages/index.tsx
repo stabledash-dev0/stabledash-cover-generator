@@ -23,6 +23,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [eventData, setEventData] = useState<EventData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [showJson, setShowJson] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -152,20 +153,43 @@ export default function Home() {
                   ✅ Extracted
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                {eventData.socialLinks && Object.keys(eventData.socialLinks).length > 0 && (
-                  <span>📱 {Object.keys(eventData.socialLinks).length} social</span>
-                )}
-                {eventData.sponsors && eventData.sponsors.length > 0 && (
-                  <span>🏢 {eventData.sponsors.length} sponsors</span>
-                )}
-                {eventData.organizers && eventData.organizers.length > 0 && (
-                  <span>👥 {eventData.organizers.length} organizers</span>
-                )}
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                  {eventData.socialLinks && Object.keys(eventData.socialLinks).length > 0 && (
+                    <span>📱 {Object.keys(eventData.socialLinks).length} social</span>
+                  )}
+                  {eventData.sponsors && eventData.sponsors.length > 0 && (
+                    <span>🏢 {eventData.sponsors.length} sponsors</span>
+                  )}
+                  {eventData.organizers && eventData.organizers.length > 0 && (
+                    <span>👥 {eventData.organizers.length} organizers</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowJson(!showJson)}
+                  style={{
+                    padding: '0.25rem 0.75rem',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    backgroundColor: showJson ? '#dbeafe' : '#f3f4f6',
+                    color: showJson ? '#1e40af' : '#374151',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {showJson ? '📊 Hide JSON' : '📊 Show JSON'}
+                </button>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem', '@media (min-width: 768px)': { gridTemplateColumns: '1fr 1fr' } }}>
+            <div className="responsive-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+              <style>{`
+                @media (min-width: 768px) {
+                  .responsive-grid { grid-template-columns: 1fr 1fr !important; }
+                }
+              `}</style>
               {/* Basic Information */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
@@ -392,13 +416,56 @@ export default function Home() {
                 <p style={{ color: '#111827', lineHeight: '1.625' }}>{eventData.description}</p>
               </div>
             )}
+
+            {/* JSON View */}
+            {showJson && (
+              <div style={{ marginTop: '2rem', borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827' }}>Raw JSON Data</h3>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(JSON.stringify(eventData, null, 2))}
+                    style={{
+                      padding: '0.25rem 0.75rem',
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      backgroundColor: '#f3f4f6',
+                      color: '#374151',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '0.375rem',
+                      cursor: 'pointer'
+                    }}
+                    title="Copy to clipboard"
+                  >
+                    📋 Copy
+                  </button>
+                </div>
+                <pre style={{
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '0.5rem',
+                  padding: '1rem',
+                  fontSize: '0.75rem',
+                  lineHeight: '1.5',
+                  color: '#1e293b',
+                  overflow: 'auto',
+                  maxHeight: '400px'
+                }}>
+                  {JSON.stringify(eventData, null, 2)}
+                </pre>
+              </div>
+            )}
           </div>
         )}
 
         {/* Sample URLs */}
         <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)', padding: '1.5rem', marginTop: '2rem' }}>
           <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginBottom: '1rem' }}>Sample Event URLs to Try</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', '@media (min-width: 640px)': { gridTemplateColumns: '1fr 1fr' }, fontSize: '0.875rem' }}>
+          <div className="sample-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', fontSize: '0.875rem' }}>
+            <style>{`
+              @media (min-width: 640px) {
+                .sample-grid { grid-template-columns: 1fr 1fr !important; }
+              }
+            `}</style>
             <button
               onClick={() => setUrl('https://smartcon.chain.link/')}
               style={{ textAlign: 'left', padding: '0.75rem', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '0.25rem', cursor: 'pointer' }}
