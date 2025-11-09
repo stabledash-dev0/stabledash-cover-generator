@@ -308,31 +308,68 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     // Get home directory for Chrome cache path
     const homeDir = os.homedir()
-    const chromeVersion = '141.0.7390.78'
     
-    // Try multiple Chrome paths, including HOME directory
-    const chromePaths = [
-      // Check HOME directory first (where Chrome gets installed)
-      path.join(homeDir, '.cache', 'puppeteer', 'chrome', `linux-${chromeVersion}`, 'chrome-linux64', 'chrome'),
-      // Render deployment paths
-      '/opt/render/.cache/puppeteer/chrome/linux-141.0.7390.78/chrome-linux64/chrome',
-      '/usr/bin/google-chrome',
-      '/usr/bin/chromium',
-      '/opt/google/chrome/chrome'
-    ]
-    
-    for (const chromePath of chromePaths) {
+    // Try to dynamically find Chrome version in cache directory
+    const findChromeInCache = (cacheDir: string): string | undefined => {
       try {
-        console.log(`Checking Chrome path: ${chromePath}`)
-        if (fs.existsSync(chromePath)) {
-          executablePath = chromePath
-          console.log(`Found Chrome at: ${chromePath}`)
-          break
-        } else {
-          console.log(`Chrome not found at: ${chromePath}`)
+        if (!fs.existsSync(cacheDir)) return undefined
+        
+        const chromeDir = path.join(cacheDir, 'puppeteer', 'chrome')
+        if (!fs.existsSync(chromeDir)) return undefined
+        
+        const entries = fs.readdirSync(chromeDir)
+        for (const entry of entries) {
+          if (entry.startsWith('linux-')) {
+            const chromePath = path.join(chromeDir, entry, 'chrome-linux64', 'chrome')
+            if (fs.existsSync(chromePath)) {
+              return chromePath
+            }
+          }
         }
       } catch (e) {
-        console.log(`Error checking path ${chromePath}:`, e instanceof Error ? e.message : String(e))
+        console.log(`Error scanning cache directory ${cacheDir}:`, e instanceof Error ? e.message : String(e))
+      }
+      return undefined
+    }
+    
+    // Try to find Chrome in common cache locations
+    const cacheDirs = [
+      path.join(homeDir, '.cache'),
+      '/opt/render/.cache',
+      '/root/.cache',
+      '/home/app/.cache'
+    ]
+    
+    for (const cacheDir of cacheDirs) {
+      const found = findChromeInCache(cacheDir)
+      if (found) {
+        executablePath = found
+        console.log(`Found Chrome in cache: ${found}`)
+        break
+      }
+    }
+    
+    // If not found in cache, try system paths
+    if (!executablePath) {
+      const systemPaths = [
+        '/usr/bin/google-chrome',
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser',
+        '/opt/google/chrome/chrome',
+        '/snap/bin/chromium'
+      ]
+      
+      for (const chromePath of systemPaths) {
+        try {
+          console.log(`Checking system Chrome path: ${chromePath}`)
+          if (fs.existsSync(chromePath)) {
+            executablePath = chromePath
+            console.log(`Found Chrome at: ${chromePath}`)
+            break
+          }
+        } catch (e) {
+          console.log(`Error checking path ${chromePath}:`, e instanceof Error ? e.message : String(e))
+        }
       }
     }
     

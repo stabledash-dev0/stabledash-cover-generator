@@ -13,3 +13,7 @@ services:
         value: /opt/render/.cache/puppeteer/chrome/linux-141.0.7390.78/chrome-linux64/chrome
       - key: PUPPETEER_CACHE_DIR
         value: /opt/render/.cache/puppeteer
+      - key: OPENROUTER_API_KEY
+        sync: false # Set this in Render dashboard
+      - key: STABLEDASH_AUTH_TOKEN
+        value: stabledash_cover_gen_2025_secure_xyz789

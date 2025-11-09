@@ -1,9 +1,10 @@
-# Stabledash Cover Image Generator
+# Stabledash Media Platform
 
-An API-only Next.js application that generates cover images using Sharp, with support for background images, logos, and texture overlays.
+A Next.js application for media processing and analytics, featuring a user-friendly interface for AI-powered event data extraction and cover image generation using Sharp.
 
 ## Features
 
+- **Event Data Extraction**: AI-powered extraction of structured event data from URLs
 - **Cover Image Generation**: Composite logos onto background images
 - **Texture Overlay**: Add texture overlays between background and logo
 - **Gradient Overlay**: Black to transparent gradient from bottom to top
@@ -12,6 +13,50 @@ An API-only Next.js application that generates cover images using Sharp, with su
 - **Optimized for Render**: Docker configuration with Sharp dependencies
 
 ## API Endpoints
+
+### POST `/api/extract-event-data`
+
+Extracts structured event data from event webpage URLs using AI-powered analysis.
+
+**Headers:**
+```
+Authorization: Bearer stabledash_cover_gen_2025_secure_xyz789
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "url": "https://example.com/events/sample-event"
+}
+```
+
+**Response:**
+```json
+{
+  "eventName": "Sample Tech Summit 2025",
+  "startDate": "2025-11-04",
+  "endDate": "2025-11-05",
+  "city": "New York",
+  "country": "USA",
+  "region": "united-states",
+  "description": "Where the brightest minds in blockchain meet to discuss the future of finance in Web3, finance, and government.",
+  "coverImageUrl": "https://example.com/assets/hero-summit.jpg",
+  "organizingCompany": "Chainlink",
+  "organizers": ["Chainlink Labs"],
+  "sponsors": ["UBS", "Tradeweb", "Lido", "Apex", "Wisdomtree", "Aave Labs"],
+  "iconUrl": "https://cdn.prod.website-files.com/.../Favicon.png",
+  "logoUrl": "",
+  "socialLinks": {
+    "twitter": "https://twitter.com/chainlink",
+    "youtube": "https://www.youtube.com/channel/UCnjkrlqaWEBSnKZQ71gdyFA",
+    "instagram": "https://www.instagram.com/okx_official/?hl=en",
+    "facebook": "http://www.facebook.com/swift",
+    "tiktok": "https://www.tiktok.com/@okx?lang=en"
+  },
+  "officialUrl": "https://example.com/events/sample-event"
+}
+```
 
 ### POST `/api/generate-cover-image`
 
@@ -57,6 +102,27 @@ Health check endpoint.
   "message": "API is working!"
 }
 ```
+
+## Web Interface
+
+Visit the root URL (`/`) to access the user-friendly web interface for event data extraction. The interface provides:
+
+- **URL Input**: Enter any event website URL
+- **Real-time Extraction**: AI-powered analysis of event data
+- **Rich Display**: Formatted results with images, sponsors, and organizers
+- **Sample URLs**: Quick access to popular event websites
+- **Error Handling**: Clear feedback for invalid URLs or extraction failures
+
+**Features:**
+- Clean, responsive design with inline CSS
+- Loading states and error messages
+- Image previews for event icons, logos, and cover images
+- Tag-style display for sponsors and organizers
+- Platform-specific social media buttons with icons and colors
+- Smart social link validation and selection
+- Statistics summary showing social platforms, sponsors, and organizers
+- Success indicators and interactive elements
+- Direct links to event websites and images
 
 ## Example Usage
 
