@@ -411,15 +411,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('Page content extracted, sending to OpenRouter...')
 
     // Check if OpenRouter API key is configured
-    if (!process.env.OPENROUTER_API_KEY) {
-      console.error('OPENROUTER_API_KEY environment variable is not set')
-      return res.status(500).json({
-        error: 'OpenRouter API key not configured'
-      })
-    }
+    const hasApiKey = !!process.env.OPENROUTER_API_KEY
 
-    // Prepare the prompt for OpenRouter
-    const fullPrompt = `${EVENT_EXTRACTION_PROMPT}
+    let eventData: EventData | undefined
+
+    // Try AI validation first, fall back to basic extraction if it fails
+    let useAiValidation = hasApiKey
+
+    if (useAiValidation) {
+      try {
+        console.log('Attempting AI validation and enhancement')
+
+        // Prepare the prompt for OpenRouter
+        const fullPrompt = `${EVENT_EXTRACTION_PROMPT}
 
 #INPUT#
 <url>${body.url}</url>
@@ -428,61 +432,107 @@ ${sponsorsPageContent ? `<sponsors_page_content>${sponsorsPageContent}</sponsors
 
 Return only valid JSON with no additional text or formatting:`
 
-    // Call OpenRouter API
-    const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://stabledash-cover-generator.vercel.app',
-        'X-Title': 'Stabledash Event Data Extractor'
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-3.5-sonnet',
-        messages: [
-          {
-            role: 'user',
-            content: fullPrompt
+        // Call OpenRouter API
+        const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://stabledash-cover-generator.vercel.app',
+            'X-Title': 'Stabledash Event Data Extractor'
+          },
+          body: JSON.stringify({
+            model: 'anthropic/claude-3.5-sonnet',
+            messages: [
+              {
+                role: 'user',
+                content: fullPrompt
+              }
+            ],
+            temperature: 0.1,
+            max_tokens: 2000
+          })
+        })
+
+        if (openRouterResponse.ok) {
+          const openRouterData = await openRouterResponse.json()
+          const aiResponse = openRouterData.choices?.[0]?.message?.content
+
+          if (aiResponse) {
+            console.log('AI response received, parsing JSON...')
+
+            // Parse the AI response as JSON
+            try {
+              // Clean the response - remove any markdown formatting
+              const cleanedResponse = aiResponse.replace(/```json\s*/g, '').replace(/```\s*$/g, '').trim()
+              eventData = JSON.parse(cleanedResponse)
+              console.log('Successfully used AI validation')
+            } catch (parseError) {
+              console.error('Failed to parse AI response as JSON, falling back to basic extraction:', aiResponse)
+              useAiValidation = false
+            }
+          } else {
+            console.log('No AI response content, falling back to basic extraction')
+            useAiValidation = false
           }
-        ],
-        temperature: 0.1,
-        max_tokens: 2000
-      })
-    })
-
-    if (!openRouterResponse.ok) {
-      const errorText = await openRouterResponse.text()
-      console.error('OpenRouter API error:', errorText)
-      return res.status(500).json({
-        error: 'Failed to process event data with AI'
-      })
+        } else {
+          const errorText = await openRouterResponse.text()
+          console.error('OpenRouter API error:', errorText)
+          console.log('Falling back to basic extraction due to API error')
+          useAiValidation = false
+        }
+      } catch (apiError) {
+        console.error('Error calling OpenRouter API:', apiError)
+        console.log('Falling back to basic extraction due to API call error')
+        useAiValidation = false
+      }
     }
 
-    const openRouterData = await openRouterResponse.json()
-    const aiResponse = openRouterData.choices?.[0]?.message?.content
+    // If AI validation failed or wasn't available, use basic extraction
+    if (!useAiValidation) {
+      // Fallback: return extracted data without AI validation
+      console.log('Using fallback mode without AI validation')
 
-    if (!aiResponse) {
-      return res.status(500).json({
-        error: 'No response from AI service'
-      })
-    }
+      // Create basic event data structure from extracted content
+      eventData = {
+        eventName: pageContent.title || 'Unknown Event',
+        startDate: '',
+        endDate: '',
+        city: '',
+        country: '',
+        region: '',
+        description: '',
+        coverImageUrl: '',
+        organizingCompany: '',
+        organizers: [],
+        sponsors: [],
+        iconUrl: pageContent.iconUrls?.[0] || '',
+        logoUrl: pageContent.logoUrls?.[0] || '',
+        socialLinks: pageContent.extractedSocialLinks || {},
+        officialUrl: body.url
+      }
 
-    console.log('AI response received, parsing JSON...')
-
-    // Parse the AI response as JSON
-    let eventData: EventData
-    try {
-      // Clean the response - remove any markdown formatting
-      const cleanedResponse = aiResponse.replace(/```json\s*/g, '').replace(/```\s*$/g, '').trim()
-      eventData = JSON.parse(cleanedResponse)
-    } catch (parseError) {
-      console.error('Failed to parse AI response as JSON:', aiResponse)
-      return res.status(500).json({
-        error: 'Failed to parse event data response'
-      })
+      // Try to extract some basic information from meta tags
+      if (pageContent.metaTags) {
+        if (pageContent.metaTags['og:title']) {
+          eventData.eventName = pageContent.metaTags['og:title']
+        }
+        if (pageContent.metaTags['og:description']) {
+          eventData.description = pageContent.metaTags['og:description']
+        }
+        if (pageContent.metaTags['og:image']) {
+          eventData.coverImageUrl = pageContent.metaTags['og:image']
+        }
+      }
     }
 
     // Validate the response has the required fields
+    if (!eventData) {
+      return res.status(500).json({
+        error: 'No event data was extracted'
+      })
+    }
+
     const requiredFields = ['eventName', 'startDate', 'endDate', 'city', 'country', 'region', 'description', 'coverImageUrl', 'organizingCompany', 'organizers', 'sponsors', 'iconUrl', 'logoUrl', 'socialLinks', 'officialUrl']
     for (const field of requiredFields) {
       if (!(field in eventData)) {
@@ -504,7 +554,7 @@ Return only valid JSON with no additional text or formatting:`
       }
     }
 
-    console.log('Event data extracted successfully:', eventData)
+    console.log('Event data extracted successfully:', eventData ? 'with AI validation' : 'basic extraction')
 
     // Return the extracted event data
     res.status(200).json(eventData)

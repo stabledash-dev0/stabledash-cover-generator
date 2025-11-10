@@ -122,7 +122,9 @@ Visit the root URL (`/`) to access the user-friendly web interface for event dat
 - Smart social link validation and selection
 - Statistics summary showing social platforms, sponsors, and organizers
 - Success indicators and interactive elements
+- Raw JSON data view with copy-to-clipboard functionality
 - Direct links to event websites and images
+- Graceful fallback to basic extraction when AI is unavailable
 
 ## Example Usage
 
