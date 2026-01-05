@@ -1,6 +1,6 @@
 FROM node:22-alpine
 
-# Install Chrome dependencies
+# Install Chromium and all required dependencies for Alpine Linux
 RUN apk add --no-cache \
     chromium \
     nss \
@@ -8,10 +8,17 @@ RUN apk add --no-cache \
     freetype-dev \
     harfbuzz \
     ca-certificates \
-    ttf-freefont
+    ttf-freefont \
+    ttf-opensans \
+    ttf-dejavu \
+    font-noto-emoji \
+    udev \
+    ttf-liberation \
+    && rm -rf /var/cache/apk/*
 
-# Set Chrome path
+# Set Chromium path (Alpine uses chromium-browser)
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 WORKDIR /app
 

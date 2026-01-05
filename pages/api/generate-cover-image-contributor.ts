@@ -329,81 +329,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('Using Puppeteer-only approach for complete rendering...')
     
-    // Try to install Chrome at runtime if not found
+    // Determine Chrome/Chromium executable path
     let executablePath: string | undefined
     const fs = require('fs')
-    const os = require('os')
     const path = require('path')
     
-    // First, try to install Chrome at runtime
-    try {
-      console.log('Attempting to install Chrome at runtime...')
-      const { execSync } = require('child_process')
-      execSync('npx puppeteer browsers install chrome', { stdio: 'inherit' })
-      console.log('Chrome installation completed')
-    } catch (e) {
-      console.log('Runtime Chrome installation failed:', e instanceof Error ? e.message : String(e))
-    }
-    
-    // Get home directory for Chrome cache path
-    const homeDir = os.homedir()
-    
-    // Try to dynamically find Chrome version in cache directory
-    const findChromeInCache = (cacheDir: string): string | undefined => {
-      try {
-        if (!fs.existsSync(cacheDir)) return undefined
-        
-        const chromeDir = path.join(cacheDir, 'puppeteer', 'chrome')
-        if (!fs.existsSync(chromeDir)) return undefined
-        
-        const entries = fs.readdirSync(chromeDir)
-        for (const entry of entries) {
-          if (entry.startsWith('linux-')) {
-            const chromePath = path.join(chromeDir, entry, 'chrome-linux64', 'chrome')
-            if (fs.existsSync(chromePath)) {
-              return chromePath
-            }
-          }
-        }
-      } catch (e) {
-        console.log(`Error scanning cache directory ${cacheDir}:`, e instanceof Error ? e.message : String(e))
-      }
-      return undefined
-    }
-    
-    // Try to find Chrome in common cache locations
-    const cacheDirs = [
-      path.join(homeDir, '.cache'),
-      '/opt/render/.cache',
-      '/root/.cache',
-      '/home/app/.cache'
-    ]
-    
-    for (const cacheDir of cacheDirs) {
-      const found = findChromeInCache(cacheDir)
-      if (found) {
-        executablePath = found
-        console.log(`Found Chrome in cache: ${found}`)
-        break
+    // Priority 1: Check environment variable (set by Dockerfile)
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      const envPath = process.env.PUPPETEER_EXECUTABLE_PATH
+      if (fs.existsSync(envPath)) {
+        executablePath = envPath
+        console.log(`Using Chrome from PUPPETEER_EXECUTABLE_PATH: ${envPath}`)
+      } else {
+        console.log(`PUPPETEER_EXECUTABLE_PATH set but file not found: ${envPath}`)
       }
     }
     
-    // If not found in cache, try system paths
+    // Priority 2: Try system paths (Alpine Linux uses chromium-browser)
     if (!executablePath) {
       const systemPaths = [
-        '/usr/bin/google-chrome',
-        '/usr/bin/chromium',
-        '/usr/bin/chromium-browser',
-        '/opt/google/chrome/chrome',
-        '/snap/bin/chromium'
+        '/usr/bin/chromium-browser', // Alpine Linux
+        '/usr/bin/chromium',          // Debian/Ubuntu
+        '/usr/bin/google-chrome',     // Google Chrome
+        '/opt/google/chrome/chrome',  // Alternative Chrome location
+        '/snap/bin/chromium'          // Snap package
       ]
       
       for (const chromePath of systemPaths) {
         try {
-          console.log(`Checking system Chrome path: ${chromePath}`)
           if (fs.existsSync(chromePath)) {
             executablePath = chromePath
-            console.log(`Found Chrome at: ${chromePath}`)
+            console.log(`Found Chrome/Chromium at system path: ${chromePath}`)
             break
           }
         } catch (e) {
@@ -413,7 +369,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     
     if (!executablePath) {
-      console.log('No Chrome found at specific paths, using Puppeteer default detection')
+      console.log('No Chrome/Chromium found at system paths, using Puppeteer default detection')
     }
     
     // Launch Puppeteer with found Chrome path or default detection

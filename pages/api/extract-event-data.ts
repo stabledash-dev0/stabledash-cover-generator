@@ -168,7 +168,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('Fetching page content from:', body.url)
 
     // Fetch page content using Puppeteer
-    const browser = await puppeteer.launch({
+    const launchOptions: any = {
       headless: true,
       args: [
         '--no-sandbox',
@@ -177,7 +177,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         '--disable-gpu',
         '--disable-web-security'
       ]
-    })
+    }
+    
+    // Use system Chromium if available (set by Dockerfile)
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      const fs = require('fs')
+      if (fs.existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)) {
+        launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
+        console.log(`Using Chrome from PUPPETEER_EXECUTABLE_PATH: ${process.env.PUPPETEER_EXECUTABLE_PATH}`)
+      }
+    }
+    
+    const browser = await puppeteer.launch(launchOptions)
 
     const page = await browser.newPage()
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')

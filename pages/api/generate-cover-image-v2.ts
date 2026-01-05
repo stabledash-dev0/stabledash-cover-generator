@@ -181,47 +181,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       console.log('Using HTML2PNG approach for perfect centering...')
       
-      // Try to install Chrome at runtime if not found
+      // Determine Chrome/Chromium executable path
       let executablePath: string | undefined
       const fs = require('fs')
+      const path = require('path')
       
-      // First, try to install Chrome at runtime
-      try {
-        console.log('Attempting to install Chrome at runtime...')
-        const { execSync } = require('child_process')
-        execSync('npx puppeteer browsers install chrome', { stdio: 'inherit' })
-        console.log('Chrome installation completed')
-      } catch (e) {
-        console.log('Runtime Chrome installation failed:', e instanceof Error ? e.message : String(e))
+      // Priority 1: Check environment variable (set by Dockerfile)
+      if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+        const envPath = process.env.PUPPETEER_EXECUTABLE_PATH
+        if (fs.existsSync(envPath)) {
+          executablePath = envPath
+          console.log(`Using Chrome from PUPPETEER_EXECUTABLE_PATH: ${envPath}`)
+        } else {
+          console.log(`PUPPETEER_EXECUTABLE_PATH set but file not found: ${envPath}`)
+        }
       }
       
-      // Try multiple Chrome paths for Render deployment
-      const chromePaths = [
-        '/opt/render/.cache/puppeteer/chrome/linux-141.0.7390.78/chrome-linux64/chrome',
-        '/opt/render/.cache/puppeteer/chrome/linux-141.0.7390.78/chrome-linux64/chrome',
-        '/usr/bin/google-chrome',
-        '/usr/bin/chromium-browser',
-        '/usr/bin/chromium',
-        '/opt/google/chrome/chrome'
-      ]
-      
-      for (const chromePath of chromePaths) {
-        try {
-          console.log(`Checking Chrome path: ${chromePath}`)
-          if (fs.existsSync(chromePath)) {
-            executablePath = chromePath
-            console.log(`Found Chrome at: ${chromePath}`)
-            break
-          } else {
-            console.log(`Chrome not found at: ${chromePath}`)
+      // Priority 2: Try system paths (Alpine Linux uses chromium-browser)
+      if (!executablePath) {
+        const systemPaths = [
+          '/usr/bin/chromium-browser', // Alpine Linux
+          '/usr/bin/chromium',          // Debian/Ubuntu
+          '/usr/bin/google-chrome',     // Google Chrome
+          '/opt/google/chrome/chrome',  // Alternative Chrome location
+          '/snap/bin/chromium'          // Snap package
+        ]
+        
+        for (const chromePath of systemPaths) {
+          try {
+            if (fs.existsSync(chromePath)) {
+              executablePath = chromePath
+              console.log(`Found Chrome/Chromium at system path: ${chromePath}`)
+              break
+            }
+          } catch (e) {
+            console.log(`Error checking path ${chromePath}:`, e instanceof Error ? e.message : String(e))
           }
-        } catch (e) {
-          console.log(`Error checking path ${chromePath}:`, e instanceof Error ? e.message : String(e))
         }
       }
       
       if (!executablePath) {
-        console.log('No Chrome found, using Puppeteer default detection')
+        console.log('No Chrome/Chromium found at system paths, using Puppeteer default detection')
       }
       
       // Launch Puppeteer with found Chrome path or default detection
