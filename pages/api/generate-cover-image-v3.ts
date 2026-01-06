@@ -483,7 +483,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const pageElements = await page.evaluate(() => {
       const brandGradient = document.querySelector('.brand-gradient')
       const watermark = document.querySelector('.watermark')
-      const logo = document.querySelector('.logo')
+      const logo = document.querySelector('.logo') as HTMLImageElement | null
       return {
         hasBrandGradient: !!brandGradient,
         brandGradientStyles: brandGradient ? window.getComputedStyle(brandGradient).background : null,
