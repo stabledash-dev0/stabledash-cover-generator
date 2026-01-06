@@ -144,9 +144,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Build brand color gradient CSS if provided
     let brandGradientCSS = ''
+    console.log('Brand color processing:', {
+      received: body.brandcolor,
+      type: typeof body.brandcolor,
+      truthy: !!body.brandcolor
+    })
+    
     if (body.brandcolor) {
       try {
         const hexColor = body.brandcolor.replace('#', '').toUpperCase()
+        console.log('Brand color after processing:', { original: body.brandcolor, cleaned: hexColor })
+        
         if (/^[0-9A-F]{6}$/.test(hexColor)) {
           const r = parseInt(hexColor.substr(0, 2), 16)
           const g = parseInt(hexColor.substr(2, 2), 16)
@@ -154,16 +162,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           brandGradientCSS = `
             background: linear-gradient(to bottom, rgba(${r}, ${g}, ${b}, 0.8), rgba(0, 0, 0, 0.8));
           `
-          console.log(`Brand color gradient added: #${hexColor}`)
+          console.log(`✅ Brand color gradient added: #${hexColor} -> rgba(${r}, ${g}, ${b}, 0.8)`)
+          console.log('Brand gradient CSS:', brandGradientCSS)
         } else {
-          console.warn('Invalid brand color format:', body.brandcolor)
+          console.warn('❌ Invalid brand color format:', { received: body.brandcolor, cleaned: hexColor, patternMatch: /^[0-9A-F]{6}$/.test(hexColor) })
         }
       } catch (error) {
-        console.warn('Failed to create brand color gradient:', error)
+        console.error('❌ Failed to create brand color gradient:', error)
       }
+    } else {
+      console.log('⚠️ No brand color provided, skipping brand gradient')
     }
 
     // Build watermark SVG if enabled
+    console.log('Watermark processing:', {
+      received: body.watermark,
+      type: typeof body.watermark,
+      truthy: !!body.watermark,
+      strictTrue: body.watermark === true
+    })
+    
     const watermarkSvg = body.watermark ? `
       <svg viewBox="0 0 245 40" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
         <path d="M235.14 10.9811C240.146 10.9811 244.346 13.7139 244.346 19.9831V39.0588H240.039V21.0548C240.039 17.5183 238.37 14.732 234.063 14.732C229.218 14.732 225.988 17.7862 225.988 22.0193V39.0588H221.681V0.746704H225.988V14.9999H226.095C227.549 13.0709 230.456 10.9811 235.14 10.9811Z" fill="white"/>
@@ -178,8 +196,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         <path d="M16.2584 16.7183C24.926 18.8617 30.5787 20.3084 30.5787 29.0425C30.5787 34.6152 26.4334 39.8128 16.6891 39.8128C7.59085 39.8128 0.538358 34.9903 0 26.2026H4.84522C5.38358 31.4538 8.61373 35.5261 16.6891 35.5261C23.3647 35.5261 25.7335 32.4719 25.7335 29.0425C25.7335 23.7914 22.8802 22.8269 14.2665 20.8443C8.50606 19.5047 1.61507 17.5221 1.61507 10.074C1.61507 4.01906 6.29879 0.000305176 14.8048 0.000305176C22.9879 0.000305176 28.6945 4.17981 29.3405 12.1102H24.4953C23.7954 6.96615 20.8883 4.28698 14.8048 4.28698C9.36743 4.28698 6.4603 6.37674 6.4603 9.53816C6.4603 14.6286 10.6057 15.3252 16.2584 16.7183Z" fill="white"/>
       </svg>
     ` : ''
+    
+    if (body.watermark) {
+      console.log('✅ Watermark enabled, SVG generated')
+      console.log('Watermark SVG length:', watermarkSvg.length, 'characters')
+    } else {
+      console.log('⚠️ Watermark disabled or falsy, no watermark will be added')
+    }
 
     // Build complete HTML template with all layers
+    console.log('Building HTML template with:', {
+      hasBrandGradient: !!brandGradientCSS,
+      brandGradientLength: brandGradientCSS.length,
+      hasWatermark: !!body.watermark,
+      watermarkSvgLength: watermarkSvg.length,
+      dimensions: `${bgWidth}x${bgHeight}`
+    })
+    
     const htmlTemplate = `
     <!DOCTYPE html>
     <html>
@@ -287,6 +320,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     </body>
     </html>
     `
+
+    // Log HTML template structure for debugging
+    const hasBrandGradientDiv = htmlTemplate.includes('<div class="brand-gradient"></div>')
+    const hasWatermarkDiv = htmlTemplate.includes('<div class="watermark">')
+    console.log('HTML template structure check:', {
+      hasBrandGradientDiv,
+      hasWatermarkDiv,
+      brandGradientInHTML: htmlTemplate.includes('brand-gradient'),
+      watermarkInHTML: htmlTemplate.includes('watermark'),
+      htmlLength: htmlTemplate.length
+    })
+    
+    // Log a snippet of the HTML to verify structure
+    const htmlSnippet = htmlTemplate.substring(htmlTemplate.indexOf('<body>'), htmlTemplate.indexOf('</body>') + 7)
+    console.log('HTML body snippet (first 500 chars):', htmlSnippet.substring(0, 500))
 
     console.log('Using Puppeteer-only approach for complete rendering...')
     
@@ -409,10 +457,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     page.setDefaultTimeout(60000) // 60 seconds
     
     // Set the HTML content
+    console.log('Setting HTML content in Puppeteer...')
     await page.setContent(htmlTemplate, { 
       waitUntil: 'networkidle0',
       timeout: 60000
     })
+    console.log('HTML content set, waiting for images...')
     
     // Wait for all images to load
     await page.evaluate(() => {
@@ -427,9 +477,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         })
       )
     })
+    console.log('Images loaded')
+    
+    // Verify elements exist in the rendered page
+    const pageElements = await page.evaluate(() => {
+      const brandGradient = document.querySelector('.brand-gradient')
+      const watermark = document.querySelector('.watermark')
+      const logo = document.querySelector('.logo')
+      return {
+        hasBrandGradient: !!brandGradient,
+        brandGradientStyles: brandGradient ? window.getComputedStyle(brandGradient).background : null,
+        hasWatermark: !!watermark,
+        watermarkVisible: watermark ? window.getComputedStyle(watermark).display !== 'none' : false,
+        watermarkHeight: watermark ? window.getComputedStyle(watermark).height : null,
+        hasLogo: !!logo,
+        logoLoaded: logo ? logo.complete : false
+      }
+    })
+    console.log('Page elements verification:', JSON.stringify(pageElements, null, 2))
     
     // Additional wait to ensure everything is rendered
     await new Promise(resolve => setTimeout(resolve, 1000))
+    console.log('Rendering complete, taking screenshot...')
     
     // Take screenshot of the entire page as JPEG
     const finalImage = await page.screenshot({
