@@ -16,7 +16,10 @@ interface CoverImageRequest {
   width?: number
   height?: number
   brandcolor?: string // Hex color without # (e.g., "FF5733")
+  brand_color?: string // Alternative naming (with underscore) from Sanity
   watermark?: boolean // Enable watermark logo at bottom-center
+  logo_width_pct?: number // Logo width as percentage (not yet implemented)
+  pad_pct?: number // Padding as percentage (not yet implemented)
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -58,22 +61,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const body: CoverImageRequest = req.body
 
+    // Normalize field names - handle both camelCase and snake_case from different sources
+    // Handle watermark - can be boolean, string, number, or undefined
+    const watermarkValue = (body as any).watermark
+    const normalizedWatermark = watermarkValue !== undefined
+      ? (watermarkValue === true || watermarkValue === 'true' || watermarkValue === 1 || watermarkValue === '1')
+      : true // Default to true if not provided
+    
+    const normalizedBody = {
+      ...body,
+      brandcolor: body.brandcolor || body.brand_color, // Support both naming conventions
+      watermark: normalizedWatermark,
+    }
+
+    // Log received body for debugging
+    console.log('Received request body:', JSON.stringify({
+      background: normalizedBody.background,
+      logo: normalizedBody.logo,
+      quality: normalizedBody.quality,
+      brandcolor: normalizedBody.brandcolor,
+      brand_color: body.brand_color,
+      watermark: normalizedBody.watermark,
+      size: normalizedBody.size
+    }))
+
     // Validate required fields
-    if (!body.background || !body.logo) {
+    if (!normalizedBody.background || !normalizedBody.logo) {
       return res.status(400).json({
         error: 'Missing required fields: background and logo'
       })
     }
 
     // Set defaults for optional fields
-    const quality = body.quality ?? 90
-    const useOverlay = body.overlay !== false
-    const gradientIntensity = body.gradient_intensity ?? 0.8
+    const quality = normalizedBody.quality ?? 90
+    const useOverlay = normalizedBody.overlay !== false
+    const gradientIntensity = normalizedBody.gradient_intensity ?? 0.8
 
     // Handle size parameter - default to 'og' for social media sharing
-    const size = body.size ?? 'og'
-    const customWidth = body.width
-    const customHeight = body.height
+    const size = normalizedBody.size ?? 'og'
+    const customWidth = normalizedBody.width
+    const customHeight = normalizedBody.height
 
     // Define size presets
     const sizePresets = {
@@ -100,8 +127,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Fetch background image and convert to base64
-    console.log('Background URL:', body.background)
-    const backgroundResponse = await fetch(body.background)
+    console.log('Background URL:', normalizedBody.background)
+    const backgroundResponse = await fetch(normalizedBody.background)
     if (!backgroundResponse.ok) {
       return res.status(400).json({
         error: 'Failed to fetch background image'
@@ -112,8 +139,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const backgroundMimeType = backgroundResponse.headers.get('content-type') || 'image/png'
 
     // Fetch logo image and convert to base64
-    console.log('Logo URL:', body.logo)
-    const logoResponse = await fetch(body.logo)
+    console.log('Logo URL:', normalizedBody.logo)
+    const logoResponse = await fetch(normalizedBody.logo)
     if (!logoResponse.ok) {
       return res.status(400).json({
         error: 'Failed to fetch logo image'
@@ -121,7 +148,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     const logoBuffer = await logoResponse.arrayBuffer()
     const logoBase64 = Buffer.from(logoBuffer).toString('base64')
-    const logoExtension = body.logo.split('.').pop()?.toLowerCase() || 'png'
+    const logoExtension = normalizedBody.logo.split('.').pop()?.toLowerCase() || 'png'
     const logoMimeType = logoExtension === 'svg' ? 'image/svg+xml' : `image/${logoExtension}`
 
     // Fetch overlay image if needed
@@ -145,15 +172,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Build brand color gradient CSS if provided
     let brandGradientCSS = ''
     console.log('Brand color processing:', {
-      received: body.brandcolor,
-      type: typeof body.brandcolor,
-      truthy: !!body.brandcolor
+      received: normalizedBody.brandcolor,
+      original_brandcolor: body.brandcolor,
+      original_brand_color: body.brand_color,
+      type: typeof normalizedBody.brandcolor,
+      truthy: !!normalizedBody.brandcolor
     })
     
-    if (body.brandcolor) {
+    if (normalizedBody.brandcolor) {
       try {
-        const hexColor = body.brandcolor.replace('#', '').toUpperCase()
-        console.log('Brand color after processing:', { original: body.brandcolor, cleaned: hexColor })
+        const hexColor = normalizedBody.brandcolor.replace('#', '').toUpperCase()
+        console.log('Brand color after processing:', { original: normalizedBody.brandcolor, cleaned: hexColor })
         
         if (/^[0-9A-F]{6}$/.test(hexColor)) {
           const r = parseInt(hexColor.substr(0, 2), 16)
@@ -165,7 +194,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.log(`✅ Brand color gradient added: #${hexColor} -> rgba(${r}, ${g}, ${b}, 0.8)`)
           console.log('Brand gradient CSS:', brandGradientCSS)
         } else {
-          console.warn('❌ Invalid brand color format:', { received: body.brandcolor, cleaned: hexColor, patternMatch: /^[0-9A-F]{6}$/.test(hexColor) })
+          console.warn('❌ Invalid brand color format:', { received: normalizedBody.brandcolor, cleaned: hexColor, patternMatch: /^[0-9A-F]{6}$/.test(hexColor) })
         }
       } catch (error) {
         console.error('❌ Failed to create brand color gradient:', error)
@@ -176,13 +205,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Build watermark SVG if enabled
     console.log('Watermark processing:', {
-      received: body.watermark,
-      type: typeof body.watermark,
-      truthy: !!body.watermark,
-      strictTrue: body.watermark === true
+      received: normalizedBody.watermark,
+      type: typeof normalizedBody.watermark,
+      truthy: !!normalizedBody.watermark,
+      strictTrue: normalizedBody.watermark === true
     })
     
-    const watermarkSvg = body.watermark ? `
+    const watermarkSvg = normalizedBody.watermark ? `
       <svg viewBox="0 0 245 40" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
         <path d="M235.14 10.9811C240.146 10.9811 244.346 13.7139 244.346 19.9831V39.0588H240.039V21.0548C240.039 17.5183 238.37 14.732 234.063 14.732C229.218 14.732 225.988 17.7862 225.988 22.0193V39.0588H221.681V0.746704H225.988V14.9999H226.095C227.549 13.0709 230.456 10.9811 235.14 10.9811Z" fill="white"/>
         <path d="M208.135 22.8275C213.035 24.0063 218.58 24.8101 218.58 31.5616C218.58 36.5448 214.004 39.8134 207.759 39.8134C199.36 39.8134 195.484 35.8482 195.215 29.9541H199.522C199.791 33.0083 200.868 36.0626 207.759 36.0626C212.442 36.0626 214.273 33.6513 214.273 31.8295C214.273 27.8643 210.666 27.65 206.736 26.6855C202.537 25.6674 196.292 25.1851 196.292 18.7551C196.292 14.4685 200.114 10.9855 206.574 10.9855C213.411 10.9855 217.072 14.8435 217.503 19.5589H213.196C212.765 17.4691 211.742 14.7364 206.574 14.7364C202.698 14.7364 200.598 16.2903 200.598 18.4336C200.598 21.6486 204.313 21.9165 208.135 22.8275Z" fill="white"/>
@@ -197,7 +226,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       </svg>
     ` : ''
     
-    if (body.watermark) {
+    if (normalizedBody.watermark) {
       console.log('✅ Watermark enabled, SVG generated')
       console.log('Watermark SVG length:', watermarkSvg.length, 'characters')
     } else {
@@ -316,7 +345,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         <div class="logo-container">
             <img src="data:${logoMimeType};base64,${logoBase64}" class="logo" alt="Logo" />
         </div>
-        ${body.watermark ? `<div class="watermark">${watermarkSvg}</div>` : ''}
+        ${normalizedBody.watermark ? `<div class="watermark">${watermarkSvg}</div>` : ''}
     </body>
     </html>
     `
